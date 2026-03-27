@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-forensics"
+version = "0.1.0"
+description = "Black box for AI agents — capture decisions, generate forensic reports for EU AI Act compliance"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [{name = "ilya"}]
+keywords = ["ai", "agent", "forensics", "compliance", "eu-ai-act", "observability"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+langchain = ["langchain-core>=0.3"]
+openai-agents = ["openai-agents>=0.1"]
+crewai = ["crewai>=0.80"]
+pdf = ["fpdf2>=2.8"]
+all = ["langchain-core>=0.3", "openai-agents>=0.1", "crewai>=0.80", "fpdf2>=2.8"]
+
+[project.urls]
+Homepage = "https://github.com/ilya/agent-forensics"
+
+[tool.setuptools.packages.find]
+include = ["agent_forensics*"]
