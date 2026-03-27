@@ -4,6 +4,8 @@
 
 When an AI agent makes a wrong purchase, leaks data, or fails silently — you need to know **why**. Agent Forensics records every decision point, tool call, and LLM interaction, then reconstructs the causal chain when things go wrong.
 
+![Agent Forensics Dashboard — Incident Session](content/screenshots/02-incident-overview.png)
+
 ## Why
 
 - **EU AI Act** (Aug 2026): High-risk AI systems must provide decision traceability. Fines up to €35M or 7% of global revenue.
@@ -89,6 +91,10 @@ python -c "from agent_forensics import Forensics; Forensics(db_path='forensics.d
 ```
 
 Dark-themed dashboard with session selector, color-coded timeline, and causal chain visualization.
+
+![Causal Chain — Root Cause Analysis](content/screenshots/04-causal-chain.png)
+
+![Data Leak Incident](content/screenshots/05-data-leak.png)
 
 ### Output Formats
 
