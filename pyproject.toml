@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-forensics"
-version = "0.1.0"
+version = "0.2.0"
 description = "Black box for AI agents — capture decisions, generate forensic reports for EU AI Act compliance"
 readme = "README.md"
 license = {text = "MIT"}

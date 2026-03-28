@@ -24,9 +24,11 @@ def generate_report(store: EventStore, session_id: str) -> str:
     errors = [e for e in events if e.event_type == "error"]
     tool_calls = [e for e in events if e.event_type in ("tool_call_start", "tool_call_end")]
     final = [e for e in events if e.event_type == "final_decision"]
+    context_injections = [e for e in events if e.event_type == "context_injection"]
+    prompt_drifts = [e for e in events if e.event_type == "prompt_drift"]
 
     # Determine incident status
-    has_incident = len(errors) > 0 or any(
+    has_incident = len(errors) > 0 or len(prompt_drifts) > 0 or any(
         "error" in str(e.output_data).lower() or "fail" in str(e.output_data).lower()
         for e in events
     )
@@ -70,6 +72,9 @@ def generate_report(store: EventStore, session_id: str) -> str:
             "decision": "DECISION",
             "final_decision": "FINAL",
             "error": "ERROR",
+            "context_injection": "CONTEXT",
+            "prompt_state": "PROMPT",
+            "prompt_drift": "DRIFT",
         }.get(event.event_type, event.event_type)
 
         # Extract key information
@@ -138,6 +143,38 @@ def generate_report(store: EventStore, session_id: str) -> str:
         report.append(_build_causal_chain(events))
         report.append("")
 
+    # -- Prompt Drift Analysis --
+    if prompt_drifts:
+        report.append("## Prompt Drift Analysis")
+        report.append("")
+        report.append(f"> **{len(prompt_drifts)} prompt drift(s) detected.** The system prompt changed between agent steps.")
+        report.append("")
+        for i, pd in enumerate(prompt_drifts, 1):
+            report.append(f"### Drift {i}")
+            report.append(f"- **Timestamp:** {pd.timestamp}")
+            diff = pd.input_data.get("diff", {})
+            added = diff.get("added", [])
+            removed = diff.get("removed", [])
+            if added:
+                report.append(f"- **Added:** `{_truncate(str(added), 200)}`")
+            if removed:
+                report.append(f"- **Removed:** `{_truncate(str(removed), 200)}`")
+            report.append("")
+
+    # -- Context Injection Log --
+    if context_injections:
+        report.append("## Context Injections")
+        report.append("")
+        report.append(f"{len(context_injections)} external context injection(s) recorded.")
+        report.append("")
+        report.append("| # | Timestamp | Source | Detail |")
+        report.append("|---|-----------|--------|--------|")
+        for i, ci in enumerate(context_injections, 1):
+            report.append(
+                f"| {i} | {ci.timestamp} | {ci.action} | `{_truncate(str(ci.input_data), 100)}` |"
+            )
+        report.append("")
+
     # -- Tool Usage Summary --
     report.append("## Tool Usage Summary")
     report.append("")
@@ -159,6 +196,8 @@ def generate_report(store: EventStore, session_id: str) -> str:
     report.append(f"- Total events captured: {len(events)}")
     report.append(f"- Decision points: {len(decisions)}")
     report.append(f"- Errors/incidents: {len(errors)}")
+    report.append(f"- Prompt drifts: {len(prompt_drifts)}")
+    report.append(f"- Context injections: {len(context_injections)}")
     report.append("")
 
     return "\n".join(report)
@@ -185,6 +224,15 @@ def _extract_detail(event: Event) -> str:
         return _truncate(event.reasoning, 120)
     elif event.event_type == "error":
         return _truncate(str(event.output_data), 100)
+    elif event.event_type == "context_injection":
+        return _truncate(f"Source: {event.action} — {event.reasoning}", 120)
+    elif event.event_type == "prompt_drift":
+        diff = event.input_data.get("diff", {})
+        added = len(diff.get("added", []))
+        removed = len(diff.get("removed", []))
+        return _truncate(f"DRIFT: +{added} lines, -{removed} lines changed", 120)
+    elif event.event_type == "prompt_state":
+        return _truncate("Prompt state recorded", 100)
     return _truncate(event.reasoning, 100)
 
 
@@ -218,6 +266,16 @@ def _build_causal_chain(events: list[Event]) -> str:
             chain_parts.append(f"     Result: [{marker}] {_truncate(result, 150)}")
         elif event.event_type == "error":
             chain_parts.append(f"  *** ERROR: {_truncate(str(event.output_data), 200)} ***")
+        elif event.event_type == "context_injection":
+            chain_parts.append(f"[CONTEXT] {event.action}")
+            chain_parts.append(f"  Injected: {_truncate(str(event.input_data), 150)}")
+        elif event.event_type == "prompt_drift":
+            chain_parts.append(f"[*** PROMPT DRIFT ***]")
+            diff = event.input_data.get("diff", {})
+            if diff.get("added"):
+                chain_parts.append(f"  + Added: {_truncate(str(diff['added']), 150)}")
+            if diff.get("removed"):
+                chain_parts.append(f"  - Removed: {_truncate(str(diff['removed']), 150)}")
         elif event.event_type == "final_decision":
             chain_parts.append(f"[FINAL] {_truncate(str(event.output_data), 200)}")
 

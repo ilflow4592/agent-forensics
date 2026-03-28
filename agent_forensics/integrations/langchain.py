@@ -27,6 +27,7 @@ class ForensicsCollector(BaseCallbackHandler):
         self.store = store
         self.session_id = session_id
         self.agent_id = agent_id
+        self._last_system_prompt = None  # For prompt drift tracking
 
     # -- LLM Call Capture --
 
@@ -34,19 +35,52 @@ class ForensicsCollector(BaseCallbackHandler):
         """ChatModel call started. LangGraph ReAct uses chat models."""
         # messages is a list of list of BaseMessage
         flat_messages = []
+        system_prompt = None
+
         for msg_list in messages:
             for msg in msg_list:
-                flat_messages.append({
-                    "role": msg.__class__.__name__,
-                    "content": msg.content[:300] if isinstance(msg.content, str) else str(msg.content)[:300],
-                })
+                role = msg.__class__.__name__
+                content = msg.content[:300] if isinstance(msg.content, str) else str(msg.content)[:300]
+                flat_messages.append({"role": role, "content": content})
+
+                # Extract system prompt for drift detection
+                if role in ("SystemMessage", "System"):
+                    system_prompt = msg.content if isinstance(msg.content, str) else str(msg.content)
+
+        # Detect prompt drift
+        if system_prompt is not None:
+            prompt_changed = (
+                self._last_system_prompt is not None
+                and self._last_system_prompt != system_prompt
+            )
+            if prompt_changed:
+                old_lines = set(self._last_system_prompt.splitlines())
+                new_lines = set(system_prompt.splitlines())
+                self.store.save(Event(
+                    timestamp=now(),
+                    event_type="prompt_drift",
+                    agent_id=self.agent_id,
+                    action="prompt_drift",
+                    input_data={
+                        "system_prompt": system_prompt[:2000],
+                        "prompt_changed": True,
+                        "diff": {
+                            "added": list(new_lines - old_lines)[:20],
+                            "removed": list(old_lines - new_lines)[:20],
+                        },
+                    },
+                    output_data={},
+                    reasoning="PROMPT DRIFT DETECTED — system prompt changed between steps",
+                    session_id=self.session_id,
+                ))
+            self._last_system_prompt = system_prompt
 
         self.store.save(Event(
             timestamp=now(),
             event_type="llm_call_start",
             agent_id=self.agent_id,
             action="llm_call",
-            input_data={"messages": flat_messages[-3:]},  # Last 3 only (save context)
+            input_data={"messages": flat_messages[-3:]},
             output_data={},
             reasoning="Requesting inference from LLM",
             session_id=self.session_id,

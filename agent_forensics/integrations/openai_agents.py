@@ -30,6 +30,7 @@ class ForensicsAgentHooks(AgentHooks):
         self.store = store
         self.session_id = session_id
         self.agent_id = agent_id
+        self._last_system_prompt = None  # For prompt drift tracking
 
     async def on_start(self, context: AgentHookContext, agent) -> None:
         """Agent execution started."""
@@ -60,7 +61,7 @@ class ForensicsAgentHooks(AgentHooks):
         ))
 
     async def on_llm_start(self, context: RunContextWrapper, agent, system_prompt, input_items) -> None:
-        """LLM call started."""
+        """LLM call started. Also detects prompt drift between steps."""
         # Extract last message from input_items
         last_input = ""
         if input_items:
@@ -69,6 +70,34 @@ class ForensicsAgentHooks(AgentHooks):
                 last_input = str(last_item.get("content", ""))[:300]
             else:
                 last_input = str(last_item)[:300]
+
+        # Detect prompt drift
+        if system_prompt is not None:
+            prompt_changed = (
+                self._last_system_prompt is not None
+                and self._last_system_prompt != system_prompt
+            )
+            if prompt_changed:
+                old_lines = set(self._last_system_prompt.splitlines())
+                new_lines = set(system_prompt.splitlines())
+                self.store.save(Event(
+                    timestamp=now(),
+                    event_type="prompt_drift",
+                    agent_id=self.agent_id,
+                    action="prompt_drift",
+                    input_data={
+                        "system_prompt": system_prompt[:2000],
+                        "prompt_changed": True,
+                        "diff": {
+                            "added": list(new_lines - old_lines)[:20],
+                            "removed": list(old_lines - new_lines)[:20],
+                        },
+                    },
+                    output_data={},
+                    reasoning="PROMPT DRIFT DETECTED — system prompt changed between steps",
+                    session_id=self.session_id,
+                ))
+            self._last_system_prompt = system_prompt
 
         self.store.save(Event(
             timestamp=now(),
