@@ -14,12 +14,22 @@ When an AI agent makes a wrong purchase, leaks data, or fails silently — you n
 
 ## Install
 
+### From PyPI
+
 ```bash
 pip install agent-forensics              # Core only (manual recording)
 pip install agent-forensics[langchain]   # + LangChain integration
 pip install agent-forensics[openai-agents]  # + OpenAI Agents SDK
 pip install agent-forensics[crewai]      # + CrewAI
 pip install agent-forensics[all]         # Everything
+```
+
+### From Source
+
+```bash
+git clone https://github.com/ilflow4592/agent-forensics.git
+cd agent-forensics
+pip install -e ".[all]"
 ```
 
 ## Quick Start
