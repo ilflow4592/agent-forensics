@@ -557,6 +557,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#add_pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add_pattern()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#on_failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        on_failure()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        handoff()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent_stats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent_stats()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#get_replay_config" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1193,6 +1237,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#add_pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add_pattern()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#on_failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        on_failure()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        handoff()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent_stats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent_stats()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#get_replay_config" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1804,69 +1892,185 @@
 <a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="get_replay_config"><code>get_replay_config()</code></h3>
-<p>Extract model config and step sequence from a recorded session.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">config</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">get_replay_config</span><span class="p">(</span><span class="s2">&quot;session-123&quot;</span><span class="p">)</span>
+<h3 id="add_pattern"><code>add_pattern()</code></h3>
+<p>Register a custom failure pattern detector.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">detect_large_purchase</span><span class="p">(</span><span class="n">events</span><span class="p">):</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    <span class="n">failures</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">events</span><span class="p">):</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">event_type</span> <span class="o">==</span> <span class="s2">&quot;decision&quot;</span> <span class="ow">and</span> <span class="s2">&quot;purchase&quot;</span> <span class="ow">in</span> <span class="n">e</span><span class="o">.</span><span class="n">action</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>            <span class="n">total</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">input_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">and</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">10000</span><span class="p">:</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>                <span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;LARGE_PURCHASE&quot;</span><span class="p">,</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>                    <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;HIGH&quot;</span><span class="p">,</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Purchase of $</span><span class="si">{</span><span class="n">total</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2"> exceeds threshold&quot;</span><span class="p">,</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>                    <span class="s2">&quot;evidence&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="n">total</span><span class="p">},</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>                    <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>                <span class="p">})</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>    <span class="k">return</span> <span class="n">failures</span>
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="n">f</span><span class="o">.</span><span class="n">add_pattern</span><span class="p">(</span><span class="n">detect_large_purchase</span><span class="p">)</span>
+</code></pre></div>
+<p>The detector must be a callable that takes <code>list[Event]</code> and returns <code>list[dict]</code> in the same format as built-in patterns.</p>
+<hr />
+<h3 id="on_failure"><code>on_failure()</code></h3>
+<p>Register a callback or webhook to fire when failures are detected.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Callback</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">f</span><span class="o">.</span><span class="n">on_failure</span><span class="p">(</span><span class="k">lambda</span> <span class="n">failures</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ALERT: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failures</span><span class="p">)</span><span class="si">}</span><span class="s2"> failures!&quot;</span><span class="p">),</span> <span class="n">min_severity</span><span class="o">=</span><span class="s2">&quot;HIGH&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># Webhook (Slack, Discord, etc.)</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">f</span><span class="o">.</span><span class="n">on_failure</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">webhook</span><span class="o">=</span><span class="s2">&quot;https://hooks.slack.com/services/...&quot;</span><span class="p">,</span> <span class="n">min_severity</span><span class="o">=</span><span class="s2">&quot;HIGH&quot;</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>callback</code></td>
+<td><code>callable</code></td>
+<td>Yes</td>
+<td>Function that receives matching failures (pass <code>None</code> for webhook-only)</td>
+</tr>
+<tr>
+<td><code>min_severity</code></td>
+<td><code>str</code></td>
+<td>No</td>
+<td>Minimum severity to trigger (<code>"HIGH"</code>, <code>"MEDIUM"</code>, <code>"LOW"</code>)</td>
+</tr>
+<tr>
+<td><code>webhook</code></td>
+<td><code>str</code></td>
+<td>No</td>
+<td>URL to POST failure data to</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="handoff"><code>handoff()</code></h3>
+<p>Record an agent-to-agent handoff in multi-agent systems.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">f</span><span class="o">.</span><span class="n">handoff</span><span class="p">(</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="n">to_agent</span><span class="o">=</span><span class="s2">&quot;executor&quot;</span><span class="p">,</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;buy mouse&quot;</span><span class="p">,</span> <span class="s2">&quot;budget&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    <span class="n">reasoning</span><span class="o">=</span><span class="s2">&quot;Delegating purchase to executor agent&quot;</span><span class="p">,</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>to_agent</code></td>
+<td><code>str</code></td>
+<td>Yes</td>
+<td>Agent receiving the handoff</td>
+</tr>
+<tr>
+<td><code>context</code></td>
+<td><code>dict</code></td>
+<td>No</td>
+<td>Data passed to the next agent</td>
+</tr>
+<tr>
+<td><code>reasoning</code></td>
+<td><code>str</code></td>
+<td>No</td>
+<td>Why this handoff is happening</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="agent_stats"><code>agent_stats()</code></h3>
+<p>Get per-agent breakdown of events and failures in a session.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">stats</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">agent_stats</span><span class="p">()</span>
 </code></pre></div>
 <p><strong>Returns:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="p">{</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="s2">&quot;session-123&quot;</span><span class="p">,</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="s2">&quot;model_config&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;gpt-4o&quot;</span><span class="p">,</span> <span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">},</span>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;decision&quot;</span><span class="p">,</span> <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">},</span> <span class="o">...</span><span class="p">],</span>
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="s2">&quot;tool_responses&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tool_result&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}},</span>
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="s2">&quot;total_events&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="p">{</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>    <span class="s2">&quot;agents&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>        <span class="s2">&quot;planner&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;decisions&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;tools&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;failures&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>        <span class="s2">&quot;executor&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;decisions&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;tools&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;failures&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]},</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="p">},</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    <span class="s2">&quot;handoffs&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;from&quot;</span><span class="p">:</span> <span class="s2">&quot;planner&quot;</span><span class="p">,</span> <span class="s2">&quot;to&quot;</span><span class="p">:</span> <span class="s2">&quot;executor&quot;</span><span class="p">,</span> <span class="s2">&quot;reasoning&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">}],</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>    <span class="s2">&quot;handoff_chain&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;planner&quot;</span><span class="p">,</span> <span class="s2">&quot;executor&quot;</span><span class="p">],</span>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>    <span class="s2">&quot;total_agents&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>    <span class="s2">&quot;is_multi_agent&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="p">}</span>
+</code></pre></div>
+<hr />
+<h3 id="get_replay_config"><code>get_replay_config()</code></h3>
+<p>Extract model config and step sequence from a recorded session.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">config</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">get_replay_config</span><span class="p">(</span><span class="s2">&quot;session-123&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Returns:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="p">{</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="s2">&quot;session-123&quot;</span><span class="p">,</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    <span class="s2">&quot;model_config&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;gpt-4o&quot;</span><span class="p">,</span> <span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">},</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    <span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;decision&quot;</span><span class="p">,</span> <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">},</span> <span class="o">...</span><span class="p">],</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    <span class="s2">&quot;tool_responses&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tool_result&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}},</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>    <span class="s2">&quot;total_events&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a><span class="p">}</span>
 </code></pre></div>
 <hr />
 <h3 id="replay_diff"><code>replay_diff()</code></h3>
 <p>Compare two sessions (original vs replay) and return differences.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">diff</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">replay_diff</span><span class="p">(</span><span class="s2">&quot;original-session&quot;</span><span class="p">,</span> <span class="s2">&quot;replay-session&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">diff</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">replay_diff</span><span class="p">(</span><span class="s2">&quot;original-session&quot;</span><span class="p">,</span> <span class="s2">&quot;replay-session&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><strong>Returns:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="p">{</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    <span class="s2">&quot;original_session&quot;</span><span class="p">:</span> <span class="s2">&quot;original-session&quot;</span><span class="p">,</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    <span class="s2">&quot;replay_session&quot;</span><span class="p">:</span> <span class="s2">&quot;replay-session&quot;</span><span class="p">,</span>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="s2">&quot;matching&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="s2">&quot;divergences&quot;</span><span class="p">:</span> <span class="p">[</span>
-<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>        <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;diverged&quot;</span><span class="p">,</span> <span class="s2">&quot;original&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span> <span class="s2">&quot;replay&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}},</span>
-<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    <span class="p">],</span>
-<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="p">{</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>    <span class="s2">&quot;original_session&quot;</span><span class="p">:</span> <span class="s2">&quot;original-session&quot;</span><span class="p">,</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>    <span class="s2">&quot;replay_session&quot;</span><span class="p">:</span> <span class="s2">&quot;replay-session&quot;</span><span class="p">,</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>    <span class="s2">&quot;matching&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>    <span class="s2">&quot;divergences&quot;</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>        <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;diverged&quot;</span><span class="p">,</span> <span class="s2">&quot;original&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span> <span class="s2">&quot;replay&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}},</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    <span class="p">],</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="p">}</span>
 </code></pre></div>
 <p>Divergence types: <code>diverged</code>, <code>extra_in_replay</code>, <code>missing_in_replay</code></p>
 <hr />
 <h2 id="query-methods">Query Methods</h2>
 <h3 id="events"><code>events()</code></h3>
 <p>Return all events for the current session.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">events</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">events</span><span class="p">()</span>
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">event_type</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="n">events</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">events</span><span class="p">()</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">event_type</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><strong>Returns:</strong> <code>list[Event]</code></p>
 <h3 id="sessions"><code>sessions()</code></h3>
 <p>Return all session IDs in the database.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">sessions</span><span class="p">())</span>  <span class="c1"># [&#39;order-123&#39;, &#39;order-456&#39;]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">sessions</span><span class="p">())</span>  <span class="c1"># [&#39;order-123&#39;, &#39;order-456&#39;]</span>
 </code></pre></div>
 <hr />
 <h2 id="integration-methods">Integration Methods</h2>
 <h3 id="langchain"><code>langchain()</code></h3>
 <p>Return a LangChain callback handler.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">langchain</span><span class="p">()</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">},</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;callbacks&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">handler</span><span class="p">]})</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">langchain</span><span class="p">()</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">},</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;callbacks&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">handler</span><span class="p">]})</span>
 </code></pre></div>
 <h3 id="openai_agents"><code>openai_agents()</code></h3>
 <p>Return OpenAI Agents SDK hooks.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">hooks</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">openai_agents</span><span class="p">()</span>
-<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;shopper&quot;</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="n">hooks</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="n">hooks</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">openai_agents</span><span class="p">()</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;shopper&quot;</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="n">hooks</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="crewai"><code>crewai()</code></h3>
 <p>Return CrewAI callback collection.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">hooks</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">crewai</span><span class="p">()</span>
-<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="n">step_callback</span><span class="o">=</span><span class="n">hooks</span><span class="o">.</span><span class="n">step_callback</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="n">hooks</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">crewai</span><span class="p">()</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="n">step_callback</span><span class="o">=</span><span class="n">hooks</span><span class="o">.</span><span class="n">step_callback</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="event">Event</h2>
 <p>The <code>Event</code> dataclass represents a single recorded event.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agent_forensics</span><span class="w"> </span><span class="kn">import</span> <span class="n">Event</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agent_forensics</span><span class="w"> </span><span class="kn">import</span> <span class="n">Event</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1926,11 +2130,11 @@
 </table>
 <h2 id="eventstore">EventStore</h2>
 <p>Low-level access to the SQLite event store.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agent_forensics</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventStore</span>
-<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>
-<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">EventStore</span><span class="p">(</span><span class="s2">&quot;forensics.db&quot;</span><span class="p">)</span>
-<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="n">events</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_session_events</span><span class="p">(</span><span class="s2">&quot;session-123&quot;</span><span class="p">)</span>
-<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="n">sessions</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_all_sessions</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agent_forensics</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventStore</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">EventStore</span><span class="p">(</span><span class="s2">&quot;forensics.db&quot;</span><span class="p">)</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="n">events</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_session_events</span><span class="p">(</span><span class="s2">&quot;session-123&quot;</span><span class="p">)</span>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="n">sessions</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_all_sessions</span><span class="p">()</span>
 </code></pre></div>
 
 
