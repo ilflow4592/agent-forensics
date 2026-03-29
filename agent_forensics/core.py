@@ -112,6 +112,30 @@ class Forensics:
             session_id=self.session,
         ))
 
+    def guardrail(self, *, intent: str, action: str, allowed: bool, reason: str = "") -> str:
+        """Record a guardrail checkpoint — was this action allowed or blocked?
+
+        Use this before critical actions (purchases, data access, external API calls)
+        to log whether the action passed or was blocked, and why.
+
+        Args:
+            intent: What the agent intended to do (e.g., "check price")
+            action: What the agent actually did or tried (e.g., "purchase item")
+            allowed: Whether the action was permitted
+            reason: Why it was allowed or blocked
+        """
+        event_type = "guardrail_pass" if allowed else "guardrail_block"
+        return self.store.save(Event(
+            timestamp=now(),
+            event_type=event_type,
+            agent_id=self.agent,
+            action=f"guardrail:{action}",
+            input_data={"intent": intent, "action": action, "allowed": allowed},
+            output_data={},
+            reasoning=reason or (f"Action '{action}' {'allowed' if allowed else 'BLOCKED'} — intent was '{intent}'"),
+            session_id=self.session,
+        ))
+
     def context_injection(self, source: str, *, content: dict = None, reasoning: str = "") -> str:
         """Record when external context is injected into the agent (RAG chunks, memory, retrieved docs).
 

@@ -26,9 +26,11 @@ def generate_report(store: EventStore, session_id: str) -> str:
     final = [e for e in events if e.event_type == "final_decision"]
     context_injections = [e for e in events if e.event_type == "context_injection"]
     prompt_drifts = [e for e in events if e.event_type == "prompt_drift"]
+    guardrail_blocks = [e for e in events if e.event_type == "guardrail_block"]
+    guardrail_passes = [e for e in events if e.event_type == "guardrail_pass"]
 
     # Determine incident status
-    has_incident = len(errors) > 0 or len(prompt_drifts) > 0 or any(
+    has_incident = len(errors) > 0 or len(prompt_drifts) > 0 or len(guardrail_blocks) > 0 or any(
         "error" in str(e.output_data).lower() or "fail" in str(e.output_data).lower()
         for e in events
     )
@@ -75,6 +77,8 @@ def generate_report(store: EventStore, session_id: str) -> str:
             "context_injection": "CONTEXT",
             "prompt_state": "PROMPT",
             "prompt_drift": "DRIFT",
+            "guardrail_pass": "GUARD-OK",
+            "guardrail_block": "GUARD-BLOCK",
         }.get(event.event_type, event.event_type)
 
         # Extract key information
@@ -198,6 +202,7 @@ def generate_report(store: EventStore, session_id: str) -> str:
     report.append(f"- Errors/incidents: {len(errors)}")
     report.append(f"- Prompt drifts: {len(prompt_drifts)}")
     report.append(f"- Context injections: {len(context_injections)}")
+    report.append(f"- Guardrail checks: {len(guardrail_passes)} passed, {len(guardrail_blocks)} blocked")
     report.append("")
 
     return "\n".join(report)
@@ -233,6 +238,12 @@ def _extract_detail(event: Event) -> str:
         return _truncate(f"DRIFT: +{added} lines, -{removed} lines changed", 120)
     elif event.event_type == "prompt_state":
         return _truncate("Prompt state recorded", 100)
+    elif event.event_type in ("guardrail_pass", "guardrail_block"):
+        intent = event.input_data.get("intent", "")
+        action = event.input_data.get("action", "")
+        allowed = event.input_data.get("allowed", False)
+        status = "ALLOWED" if allowed else "BLOCKED"
+        return _truncate(f"{status}: intent='{intent}' action='{action}' — {event.reasoning}", 120)
     return _truncate(event.reasoning, 100)
 
 
@@ -276,6 +287,14 @@ def _build_causal_chain(events: list[Event]) -> str:
                 chain_parts.append(f"  + Added: {_truncate(str(diff['added']), 150)}")
             if diff.get("removed"):
                 chain_parts.append(f"  - Removed: {_truncate(str(diff['removed']), 150)}")
+        elif event.event_type == "guardrail_block":
+            intent = event.input_data.get("intent", "")
+            action = event.input_data.get("action", "")
+            chain_parts.append(f"[*** GUARDRAIL BLOCKED ***] {action}")
+            chain_parts.append(f"  Intent: {intent} — {_truncate(event.reasoning, 150)}")
+        elif event.event_type == "guardrail_pass":
+            action = event.input_data.get("action", "")
+            chain_parts.append(f"[GUARDRAIL OK] {action}")
         elif event.event_type == "final_decision":
             chain_parts.append(f"[FINAL] {_truncate(str(event.output_data), 200)}")
 
