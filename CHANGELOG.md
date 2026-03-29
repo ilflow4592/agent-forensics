@@ -2,6 +2,18 @@
 
 All notable changes to Agent Forensics are documented here.
 
+## [0.3.1] — 2026-03-29
+
+### Added
+- **Dashboard V2**
+  - Failure classification summary with severity badges (HIGH/MEDIUM/LOW)
+  - Guardrail pass/block visualization cards
+  - Event search & filter (by type dropdown + keyword search)
+  - Session diff tab (side-by-side comparison with divergence highlighting)
+  - CSV export button
+  - New API endpoints: `/api/diff`, `/api/export`
+  - Support for all event types (context_injection, prompt_drift, guardrails)
+
 ## [0.3.0] — 2026-03-29
 
 ### Added
