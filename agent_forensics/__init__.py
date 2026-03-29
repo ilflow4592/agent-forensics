@@ -34,5 +34,5 @@ Usage:
 from .core import Forensics
 from .store import Event, EventStore
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = ["Forensics", "Event", "EventStore"]
