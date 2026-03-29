@@ -16,3 +16,4 @@ forensics-report-*.md
 .coverage
 .pytest_cache/
 htmlcov/
+site/

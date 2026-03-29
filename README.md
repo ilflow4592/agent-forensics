@@ -361,6 +361,22 @@ Your Agent (any framework)
 | `f.openai_agents()` | OpenAI Agents SDK `AgentHooks` |
 | `f.crewai()` | CrewAI callback collection (`.step_callback`, `.task_callback`) |
 
+## Documentation
+
+Full documentation is available at the [docs site](https://ilflow4592.github.io/agent-forensics):
+
+- [Getting Started](https://ilflow4592.github.io/agent-forensics/getting-started/)
+- [API Reference](https://ilflow4592.github.io/agent-forensics/api-reference/)
+- [Framework Integrations](https://ilflow4592.github.io/agent-forensics/integrations/)
+- [Failure Pattern Catalog](https://ilflow4592.github.io/agent-forensics/failure-patterns/)
+- [EU AI Act Compliance](https://ilflow4592.github.io/agent-forensics/eu-ai-act/)
+- [Changelog](https://ilflow4592.github.io/agent-forensics/changelog/)
+- [Contributing](https://ilflow4592.github.io/agent-forensics/contributing/)
+
+## Used By
+
+> Using Agent Forensics? Add your project here via [pull request](https://github.com/ilflow4592/agent-forensics/pulls)!
+
 ## License
 
 MIT
