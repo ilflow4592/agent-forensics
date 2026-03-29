@@ -264,6 +264,37 @@ class Forensics:
         """Return a list of all sessions."""
         return self.store.get_all_sessions()
 
+    def classify(self, session_id: str = None) -> list[dict]:
+        """Auto-classify failure modes in a session's event trace.
+
+        Returns a list of detected failures, each with:
+        - type: failure category (e.g., INSTRUCTION_CONFLICT, MISSING_APPROVAL)
+        - severity: HIGH / MEDIUM / LOW
+        - description: human-readable explanation
+        - evidence: relevant data from the trace
+        - step: which step in the timeline
+        """
+        from .classifier import classify_failures
+        events = self.store.get_session_events(session_id or self.session)
+        return classify_failures(events)
+
+    def failure_stats(self, session_ids: list[str] = None) -> dict:
+        """Aggregate failure patterns across multiple sessions.
+
+        Args:
+            session_ids: List of sessions to analyze. If None, analyzes all sessions.
+
+        Returns:
+            Dict with total failures, breakdown by type, and severity distribution.
+        """
+        from .classifier import classify_failures, failure_summary
+        sids = session_ids or self.store.get_all_sessions()
+        all_failures = []
+        for sid in sids:
+            events = self.store.get_session_events(sid)
+            all_failures.extend(classify_failures(events))
+        return failure_summary(all_failures)
+
     # -- Replay API --
 
     def get_replay_config(self, session_id: str = None) -> dict:

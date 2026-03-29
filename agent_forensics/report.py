@@ -147,6 +147,32 @@ def generate_report(store: EventStore, session_id: str) -> str:
         report.append(_build_causal_chain(events))
         report.append("")
 
+    # -- Failure Classification --
+    from .classifier import classify_failures
+    failures = classify_failures(events)
+    if failures:
+        report.append("## Failure Classification")
+        report.append("")
+        report.append(f"> **{len(failures)} failure pattern(s) auto-detected.**")
+        report.append("")
+        report.append("| # | Type | Severity | Step | Description |")
+        report.append("|---|------|----------|------|-------------|")
+        for i, f in enumerate(failures, 1):
+            report.append(
+                f"| {i} | `{f['type']}` | {f['severity']} | {f['step']} | {_truncate(f['description'], 100)} |"
+            )
+        report.append("")
+
+        # Evidence details
+        for i, f in enumerate(failures, 1):
+            report.append(f"### {f['type']} (Step {f['step']})")
+            report.append(f"- **Severity:** {f['severity']}")
+            report.append(f"- **Description:** {f['description']}")
+            if f.get("evidence"):
+                for key, val in f["evidence"].items():
+                    report.append(f"- **{key}:** `{_truncate(str(val), 200)}`")
+            report.append("")
+
     # -- Prompt Drift Analysis --
     if prompt_drifts:
         report.append("## Prompt Drift Analysis")
