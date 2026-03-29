@@ -6,9 +6,43 @@
 
 **Black box for AI agents.** Capture every decision, auto-detect failure patterns, generate forensic reports for EU AI Act compliance.
 
-When an AI agent makes a wrong purchase, leaks data, or fails silently — you need to know **why**. Agent Forensics records every decision point, tool call, and LLM interaction, then reconstructs the causal chain and auto-classifies what went wrong.
+When an AI agent makes a wrong purchase, leaks data, or fails silently -- you need to know **why**. Agent Forensics records every decision point, tool call, and LLM interaction, then reconstructs the causal chain and auto-classifies what went wrong.
 
-![Agent Forensics Dashboard — Incident Session](content/screenshots/02-incident-overview.png)
+![Agent Forensics Demo](content/demo.svg)
+
+## Try It Now (30 seconds)
+
+```bash
+pip install agent-forensics
+```
+
+```bash
+python -c "
+from agent_forensics import Forensics
+
+f = Forensics(session='demo', agent='shopping-agent')
+f.decision('search_products', input={'query': 'mouse'}, reasoning='User request')
+f.tool_call('search_api', input={'q': 'mouse'}, output={'error': 'Product not found'})
+f.decision('purchase item', reasoning='Buying alternative without checking')
+f.finish('Ordered replacement product')
+
+print('--- Failure Detection ---')
+for fail in f.classify():
+    print(f'[{fail[\"severity\"]}] {fail[\"type\"]}')
+    print(f'  {fail[\"description\"]}')
+"
+```
+
+**Output:**
+```
+--- Failure Detection ---
+[HIGH] HALLUCINATED_TOOL_OUTPUT
+  Tool returned an error but agent proceeded without acknowledging it
+[HIGH] MISSING_APPROVAL
+  Critical action 'purchase item' taken without guardrail check
+```
+
+The agent ignored a tool error and made a purchase without approval -- both caught automatically.
 
 ## Why
 
