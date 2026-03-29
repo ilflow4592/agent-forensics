@@ -305,6 +305,98 @@ stats = f.failure_stats(session_ids=["s1", "s2"])      # Specific sessions
 
 ---
 
+### `add_pattern()`
+
+Register a custom failure pattern detector.
+
+```python
+def detect_large_purchase(events):
+    failures = []
+    for i, e in enumerate(events):
+        if e.event_type == "decision" and "purchase" in e.action.lower():
+            total = e.input_data.get("total", 0)
+            if isinstance(total, (int, float)) and total > 10000:
+                failures.append({
+                    "type": "LARGE_PURCHASE",
+                    "severity": "HIGH",
+                    "description": f"Purchase of ${total:,.0f} exceeds threshold",
+                    "evidence": {"total": total},
+                    "step": i + 1,
+                })
+    return failures
+
+f.add_pattern(detect_large_purchase)
+```
+
+The detector must be a callable that takes `list[Event]` and returns `list[dict]` in the same format as built-in patterns.
+
+---
+
+### `on_failure()`
+
+Register a callback or webhook to fire when failures are detected.
+
+```python
+# Callback
+f.on_failure(lambda failures: print(f"ALERT: {len(failures)} failures!"), min_severity="HIGH")
+
+# Webhook (Slack, Discord, etc.)
+f.on_failure(None, webhook="https://hooks.slack.com/services/...", min_severity="HIGH")
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `callback` | `callable` | Yes | Function that receives matching failures (pass `None` for webhook-only) |
+| `min_severity` | `str` | No | Minimum severity to trigger (`"HIGH"`, `"MEDIUM"`, `"LOW"`) |
+| `webhook` | `str` | No | URL to POST failure data to |
+
+---
+
+### `handoff()`
+
+Record an agent-to-agent handoff in multi-agent systems.
+
+```python
+f.handoff(
+    to_agent="executor",
+    context={"task": "buy mouse", "budget": 100},
+    reasoning="Delegating purchase to executor agent",
+)
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `to_agent` | `str` | Yes | Agent receiving the handoff |
+| `context` | `dict` | No | Data passed to the next agent |
+| `reasoning` | `str` | No | Why this handoff is happening |
+
+---
+
+### `agent_stats()`
+
+Get per-agent breakdown of events and failures in a session.
+
+```python
+stats = f.agent_stats()
+```
+
+**Returns:**
+
+```python
+{
+    "agents": {
+        "planner": {"events": 5, "decisions": 2, "errors": 0, "tools": 2, "failures": []},
+        "executor": {"events": 8, "decisions": 3, "errors": 1, "tools": 4, "failures": [...]},
+    },
+    "handoffs": [{"from": "planner", "to": "executor", "reasoning": "..."}],
+    "handoff_chain": ["planner", "executor"],
+    "total_agents": 2,
+    "is_multi_agent": True,
+}
+```
+
+---
+
 ### `get_replay_config()`
 
 Extract model config and step sequence from a recorded session.
