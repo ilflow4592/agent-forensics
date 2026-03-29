@@ -2,6 +2,21 @@
 
 All notable changes to Agent Forensics are documented here.
 
+## [0.3.2] — 2026-03-29
+
+### Added
+- **Multi-Agent Support**
+  - `handoff()` — record agent-to-agent delegation with context
+  - `agent_stats()` — per-agent event/failure breakdown and handoff chain
+  - Report: Multi-Agent Analysis section (handoff flow + per-agent breakdown)
+  - Dashboard: handoff flow visualization, per-agent stat cards
+- **Advanced Classification**
+  - `add_pattern(fn)` — register custom failure pattern detectors
+  - `classify(min_severity=)` — filter results by severity threshold
+  - `on_failure(callback, webhook=)` — alert on failure detection
+  - Webhook support (HTTP POST to Slack/Discord/custom endpoints)
+  - `failure_stats()` includes custom patterns
+
 ## [0.3.1] — 2026-03-29
 
 ### Added
