@@ -196,6 +196,125 @@ class TestClassify:
         assert isinstance(result, list)
 
 
+class TestAddPattern:
+    def test_custom_pattern_detected(self, forensics):
+        def detect_custom(events):
+            return [
+                {"type": "CUSTOM_FAIL", "severity": "HIGH", "description": "Custom failure", "step": 1}
+                for e in events if e.event_type == "decision" and "dangerous" in e.action
+            ]
+        forensics.add_pattern(detect_custom)
+        forensics.decision("dangerous_action")
+        failures = forensics.classify()
+        custom = [f for f in failures if f["type"] == "CUSTOM_FAIL"]
+        assert len(custom) == 1
+
+    def test_custom_pattern_not_triggered(self, forensics):
+        def detect_custom(events):
+            return [
+                {"type": "CUSTOM_FAIL", "severity": "HIGH", "description": "Custom", "step": 1}
+                for e in events if "nope" in e.action
+            ]
+        forensics.add_pattern(detect_custom)
+        forensics.decision("safe_action")
+        failures = forensics.classify()
+        custom = [f for f in failures if f["type"] == "CUSTOM_FAIL"]
+        assert len(custom) == 0
+
+    def test_multiple_custom_patterns(self, forensics):
+        def detect_a(events):
+            return [{"type": "A", "severity": "LOW", "description": "A", "step": 1}]
+        def detect_b(events):
+            return [{"type": "B", "severity": "MEDIUM", "description": "B", "step": 1}]
+        forensics.add_pattern(detect_a)
+        forensics.add_pattern(detect_b)
+        forensics.decision("act")
+        failures = forensics.classify()
+        types = {f["type"] for f in failures}
+        assert "A" in types
+        assert "B" in types
+
+    def test_add_pattern_rejects_non_callable(self, forensics):
+        import pytest
+        with pytest.raises(TypeError):
+            forensics.add_pattern("not a function")
+
+    def test_custom_pattern_in_failure_stats(self, forensics):
+        def detect_custom(events):
+            return [{"type": "CUSTOM", "severity": "HIGH", "description": "test", "step": 1}]
+        forensics.add_pattern(detect_custom)
+        forensics.decision("act")
+        stats = forensics.failure_stats()
+        assert stats["by_type"]["CUSTOM"]["count"] == 1
+
+
+class TestMinSeverity:
+    def test_filter_high_only(self, forensics):
+        def mixed_failures(events):
+            return [
+                {"type": "F1", "severity": "HIGH", "description": "high", "step": 1},
+                {"type": "F2", "severity": "MEDIUM", "description": "med", "step": 1},
+                {"type": "F3", "severity": "LOW", "description": "low", "step": 1},
+            ]
+        forensics.add_pattern(mixed_failures)
+        forensics.decision("act")
+        failures = forensics.classify(min_severity="HIGH")
+        assert all(f["severity"] == "HIGH" for f in failures)
+
+    def test_filter_medium_and_above(self, forensics):
+        def mixed_failures(events):
+            return [
+                {"type": "F1", "severity": "HIGH", "description": "high", "step": 1},
+                {"type": "F2", "severity": "MEDIUM", "description": "med", "step": 1},
+                {"type": "F3", "severity": "LOW", "description": "low", "step": 1},
+            ]
+        forensics.add_pattern(mixed_failures)
+        forensics.decision("act")
+        failures = forensics.classify(min_severity="MEDIUM")
+        severities = {f["severity"] for f in failures}
+        assert "LOW" not in severities
+        assert "HIGH" in severities or "MEDIUM" in severities
+
+    def test_no_filter_returns_all(self, forensics):
+        def mixed_failures(events):
+            return [
+                {"type": "F1", "severity": "HIGH", "description": "h", "step": 1},
+                {"type": "F2", "severity": "LOW", "description": "l", "step": 1},
+            ]
+        forensics.add_pattern(mixed_failures)
+        forensics.decision("act")
+        failures = forensics.classify()
+        assert len(failures) >= 2
+
+
+class TestOnFailure:
+    def test_callback_fired(self, forensics):
+        results = []
+        forensics.on_failure(lambda f: results.extend(f), min_severity="HIGH")
+        forensics.decision("purchase item", reasoning="buying")
+        forensics.classify()
+        assert len(results) > 0
+        assert all(f["severity"] == "HIGH" for f in results)
+
+    def test_callback_not_fired_when_no_matching_severity(self, forensics):
+        results = []
+        forensics.on_failure(lambda f: results.extend(f), min_severity="HIGH")
+        forensics.decision("safe_action", reasoning="just looking")
+        forensics.classify()
+        # No HIGH severity failures for a safe action
+        assert len(results) == 0
+
+    def test_multiple_callbacks(self, forensics):
+        high_results = []
+        all_results = []
+        forensics.on_failure(lambda f: high_results.extend(f), min_severity="HIGH")
+        forensics.on_failure(lambda f: all_results.extend(f), min_severity="LOW")
+        forensics.decision("purchase item", reasoning="buying")
+        forensics.classify()
+        assert len(high_results) > 0
+        assert len(all_results) >= len(high_results)
+
+
 class TestFailureStats:
     def test_failure_stats_structure(self, forensics):
         forensics.decision("act")

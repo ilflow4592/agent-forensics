@@ -22,6 +22,8 @@ class Forensics:
         self.agent = agent
         self.store = EventStore(db_path)
         self._last_system_prompt = None  # For prompt diff tracking
+        self._custom_patterns = []  # User-defined failure detectors
+        self._failure_callbacks = []  # Alert callbacks
 
     # -- Manual Recording API --
 
@@ -264,11 +266,62 @@ class Forensics:
         """Return a list of all sessions."""
         return self.store.get_all_sessions()
 
-    def classify(self, session_id: str = None) -> list[dict]:
+    def add_pattern(self, detector) -> None:
+        """Register a custom failure pattern detector.
+
+        The detector must be a callable that takes a list of Events and returns
+        a list of failure dicts (same format as built-in patterns).
+
+        Example:
+            def detect_large_purchase(events):
+                failures = []
+                for i, e in enumerate(events):
+                    if e.event_type == "decision" and "purchase" in e.action.lower():
+                        total = e.input_data.get("total", 0)
+                        if isinstance(total, (int, float)) and total > 10000:
+                            failures.append({
+                                "type": "LARGE_PURCHASE",
+                                "severity": "HIGH",
+                                "description": f"Purchase of ${total:,.0f} exceeds threshold",
+                                "evidence": {"total": total},
+                                "step": i + 1,
+                            })
+                return failures
+
+            f.add_pattern(detect_large_purchase)
+        """
+        if not callable(detector):
+            raise TypeError("Pattern detector must be callable")
+        self._custom_patterns.append(detector)
+
+    def on_failure(self, callback, *, min_severity: str = "HIGH", webhook: str = None) -> None:
+        """Register a callback or webhook to fire when failures are detected.
+
+        Args:
+            callback: A callable that receives the list of matching failures.
+                      Pass None if using webhook only.
+            min_severity: Minimum severity to trigger ("HIGH", "MEDIUM", "LOW").
+            webhook: URL to POST failure data to (optional).
+
+        Example:
+            f.on_failure(lambda failures: print(f"ALERT: {len(failures)} failures!"))
+            f.on_failure(None, webhook="https://hooks.slack.com/services/...")
+        """
+        self._failure_callbacks.append({
+            "callback": callback,
+            "webhook": webhook,
+            "min_severity": min_severity,
+        })
+
+    def classify(self, session_id: str = None, *, min_severity: str = None) -> list[dict]:
         """Auto-classify failure modes in a session's event trace.
 
+        Args:
+            session_id: Session to analyze (default: current session).
+            min_severity: Filter results by minimum severity ("HIGH", "MEDIUM", "LOW").
+
         Returns a list of detected failures, each with:
-        - type: failure category (e.g., INSTRUCTION_CONFLICT, MISSING_APPROVAL)
+        - type: failure category (e.g., MISSING_APPROVAL, or custom)
         - severity: HIGH / MEDIUM / LOW
         - description: human-readable explanation
         - evidence: relevant data from the trace
@@ -276,7 +329,66 @@ class Forensics:
         """
         from .classifier import classify_failures
         events = self.store.get_session_events(session_id or self.session)
-        return classify_failures(events)
+
+        # Built-in patterns
+        failures = classify_failures(events)
+
+        # Custom patterns
+        for detector in self._custom_patterns:
+            failures.extend(detector(events))
+
+        # Severity filter
+        if min_severity:
+            severity_order = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+            threshold = severity_order.get(min_severity, 0)
+            failures = [f for f in failures if severity_order.get(f.get("severity", ""), 0) >= threshold]
+
+        # Fire callbacks
+        if failures and self._failure_callbacks:
+            self._fire_callbacks(failures)
+
+        return failures
+
+    def _fire_callbacks(self, failures: list[dict]):
+        """Trigger registered failure callbacks and webhooks."""
+        severity_order = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+
+        for cb in self._failure_callbacks:
+            threshold = severity_order.get(cb["min_severity"], 0)
+            matching = [f for f in failures if severity_order.get(f.get("severity", ""), 0) >= threshold]
+
+            if not matching:
+                continue
+
+            if cb["callback"]:
+                cb["callback"](matching)
+
+            if cb["webhook"]:
+                self._post_webhook(cb["webhook"], matching)
+
+    @staticmethod
+    def _post_webhook(url: str, failures: list[dict]):
+        """POST failure data to a webhook URL."""
+        import urllib.request
+        import json as _json
+
+        payload = _json.dumps({
+            "text": f"Agent Forensics Alert: {len(failures)} failure(s) detected",
+            "failures": [
+                {"type": f["type"], "severity": f["severity"], "description": f["description"]}
+                for f in failures
+            ],
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req, timeout=5)
+        except Exception:
+            pass  # Best-effort, don't crash the agent
 
     def failure_stats(self, session_ids: list[str] = None) -> dict:
         """Aggregate failure patterns across multiple sessions.
@@ -292,7 +404,10 @@ class Forensics:
         all_failures = []
         for sid in sids:
             events = self.store.get_session_events(sid)
-            all_failures.extend(classify_failures(events))
+            combined = classify_failures(events)
+            for detector in self._custom_patterns:
+                combined.extend(detector(events))
+            all_failures.extend(combined)
         return failure_summary(all_failures)
 
     # -- Replay API --
