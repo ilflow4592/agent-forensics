@@ -1,7 +1,8 @@
 # LangChain Community Integration PR
 
 ## Target Repo
-`langchain-ai/langchain` → `libs/community/langchain_community/callbacks/`
+`langchain-ai/langchain-community` → `libs/community/langchain_community/callbacks/`
+(Note: LangChain community integrations moved to a separate repo)
 
 ## PR Title
 `community: Add Agent Forensics callback handler for forensic reporting`
