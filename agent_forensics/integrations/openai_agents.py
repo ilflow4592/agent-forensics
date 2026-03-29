@@ -99,15 +99,30 @@ class ForensicsAgentHooks(AgentHooks):
                 ))
             self._last_system_prompt = system_prompt
 
+        # Extract model config for deterministic replay
+        model_config = {}
+        if hasattr(agent, "model"):
+            model_config["model"] = str(agent.model) if agent.model else "unknown"
+        if hasattr(agent, "model_settings") and agent.model_settings:
+            ms = agent.model_settings
+            if hasattr(ms, "temperature") and ms.temperature is not None:
+                model_config["temperature"] = ms.temperature
+            if hasattr(ms, "seed") and ms.seed is not None:
+                model_config["seed"] = ms.seed
+
+        input_data = {
+            "system_prompt": (system_prompt or "")[:300],
+            "last_input": last_input,
+        }
+        if model_config:
+            input_data["_model_config"] = model_config
+
         self.store.save(Event(
             timestamp=now(),
             event_type="llm_call_start",
             agent_id=self.agent_id,
             action="llm_call",
-            input_data={
-                "system_prompt": (system_prompt or "")[:300],
-                "last_input": last_input,
-            },
+            input_data=input_data,
             output_data={},
             reasoning="Requesting inference from LLM",
             session_id=self.session_id,

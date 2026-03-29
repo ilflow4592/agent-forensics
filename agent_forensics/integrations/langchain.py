@@ -33,6 +33,15 @@ class ForensicsCollector(BaseCallbackHandler):
 
     def on_chat_model_start(self, serialized: dict, messages: list, **kwargs) -> None:
         """ChatModel call started. LangGraph ReAct uses chat models."""
+        # Extract model config for deterministic replay
+        model_config = {}
+        invocation = kwargs.get("invocation_params", {})
+        model_config["model"] = invocation.get("model", invocation.get("model_name", serialized.get("id", ["unknown"])[-1]))
+        if "temperature" in invocation:
+            model_config["temperature"] = invocation["temperature"]
+        if "seed" in invocation:
+            model_config["seed"] = invocation["seed"]
+
         # messages is a list of list of BaseMessage
         flat_messages = []
         system_prompt = None
@@ -75,12 +84,16 @@ class ForensicsCollector(BaseCallbackHandler):
                 ))
             self._last_system_prompt = system_prompt
 
+        input_data = {"messages": flat_messages[-3:]}
+        if model_config:
+            input_data["_model_config"] = model_config
+
         self.store.save(Event(
             timestamp=now(),
             event_type="llm_call_start",
             agent_id=self.agent_id,
             action="llm_call",
-            input_data={"messages": flat_messages[-3:]},
+            input_data=input_data,
             output_data={},
             reasoning="Requesting inference from LLM",
             session_id=self.session_id,

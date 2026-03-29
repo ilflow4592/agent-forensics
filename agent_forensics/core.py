@@ -63,14 +63,34 @@ class Forensics:
             session_id=self.session,
         ))
 
-    def llm_call(self, *, input: dict = None, output: str = "", reasoning: str = "") -> str:
-        """Record an LLM call."""
+    def llm_call(self, *, input: dict = None, output: str = "",
+                 model: str = None, temperature: float = None, seed: int = None,
+                 reasoning: str = "") -> str:
+        """Record an LLM call with model config for deterministic replay.
+
+        Args:
+            input: What was sent to the LLM
+            output: What the LLM returned
+            model: Model name (e.g., "gpt-4o", "claude-sonnet-4-20250514")
+            temperature: Temperature setting used
+            seed: Random seed (if supported by the model)
+            reasoning: Why this LLM call was made
+        """
+        model_config = {}
+        if model: model_config["model"] = model
+        if temperature is not None: model_config["temperature"] = temperature
+        if seed is not None: model_config["seed"] = seed
+
+        input_data = input or {}
+        if model_config:
+            input_data["_model_config"] = model_config
+
         self.store.save(Event(
             timestamp=now(),
             event_type="llm_call_start",
             agent_id=self.agent,
             action="llm_call",
-            input_data=input or {},
+            input_data=input_data,
             output_data={},
             reasoning=reasoning or "LLM call",
             session_id=self.session,
@@ -243,6 +263,126 @@ class Forensics:
     def sessions(self) -> list[str]:
         """Return a list of all sessions."""
         return self.store.get_all_sessions()
+
+    # -- Replay API --
+
+    def get_replay_config(self, session_id: str = None) -> dict:
+        """Extract model config and input sequence from a recorded session for replay.
+
+        Returns a dict with:
+        - model_config: {model, temperature, seed} from the first LLM call
+        - steps: list of {type, action, input, output} for each step
+        - tool_responses: dict mapping tool calls to their recorded outputs
+
+        Usage:
+            config = f.get_replay_config("session-123")
+            print(config["model_config"])   # {'model': 'gpt-4o', 'temperature': 0}
+            print(config["steps"])          # [{type, action, input, output}, ...]
+        """
+        sid = session_id or self.session
+        events = self.store.get_session_events(sid)
+
+        model_config = {}
+        steps = []
+        tool_responses = {}
+
+        for event in events:
+            # Extract model config from first LLM call
+            if event.event_type == "llm_call_start" and not model_config:
+                mc = event.input_data.get("_model_config", {})
+                if mc:
+                    model_config = mc
+
+            # Build step sequence
+            steps.append({
+                "type": event.event_type,
+                "action": event.action,
+                "input": event.input_data,
+                "output": event.output_data,
+                "reasoning": event.reasoning,
+                "timestamp": event.timestamp,
+            })
+
+            # Map tool calls to their responses for replay
+            if event.event_type == "tool_call_end":
+                tool_responses[event.action] = event.output_data
+
+        return {
+            "session_id": sid,
+            "model_config": model_config,
+            "steps": steps,
+            "tool_responses": tool_responses,
+            "total_events": len(events),
+        }
+
+    def replay_diff(self, original_session: str, replay_session: str) -> dict:
+        """Compare two sessions (original vs replay) and return differences.
+
+        Usage:
+            # 1. Get original config
+            config = f.get_replay_config("session-123")
+
+            # 2. Re-run your agent with same config, recording to a new session
+            f2 = Forensics(session="session-123-replay")
+            # ... run agent with config["model_config"] ...
+
+            # 3. Compare
+            diff = f.replay_diff("session-123", "session-123-replay")
+            print(diff["matching"])       # True/False
+            print(diff["divergences"])    # List of differences
+        """
+        original = self.store.get_session_events(original_session)
+        replayed = self.store.get_session_events(replay_session)
+
+        # Compare decision sequences
+        orig_decisions = [
+            {"action": e.action, "reasoning": e.reasoning, "output": e.output_data}
+            for e in original
+            if e.event_type in ("decision", "final_decision", "tool_call_end")
+        ]
+        replay_decisions = [
+            {"action": e.action, "reasoning": e.reasoning, "output": e.output_data}
+            for e in replayed
+            if e.event_type in ("decision", "final_decision", "tool_call_end")
+        ]
+
+        divergences = []
+        max_len = max(len(orig_decisions), len(replay_decisions))
+
+        for i in range(max_len):
+            orig = orig_decisions[i] if i < len(orig_decisions) else None
+            repl = replay_decisions[i] if i < len(replay_decisions) else None
+
+            if orig is None:
+                divergences.append({
+                    "step": i + 1,
+                    "type": "extra_in_replay",
+                    "replay": repl,
+                })
+            elif repl is None:
+                divergences.append({
+                    "step": i + 1,
+                    "type": "missing_in_replay",
+                    "original": orig,
+                })
+            elif orig["action"] != repl["action"] or orig["output"] != repl["output"]:
+                divergences.append({
+                    "step": i + 1,
+                    "type": "diverged",
+                    "original": orig,
+                    "replay": repl,
+                })
+
+        return {
+            "original_session": original_session,
+            "replay_session": replay_session,
+            "original_events": len(original),
+            "replay_events": len(replayed),
+            "original_decisions": len(orig_decisions),
+            "replay_decisions": len(replay_decisions),
+            "matching": len(divergences) == 0,
+            "divergences": divergences,
+        }
 
     # -- Framework Integrations --
 
