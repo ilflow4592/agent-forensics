@@ -10,4 +10,8 @@ venv/
 *.pdf
 forensics-report-*.md
 .env
+.pypirc
 .DS_Store
+.coverage
+.pytest_cache/
+htmlcov/

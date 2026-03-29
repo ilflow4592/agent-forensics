@@ -1,5 +1,9 @@
 # Agent Forensics
 
+[![CI](https://github.com/ilflow4592/agent-forensics/actions/workflows/ci.yml/badge.svg)](https://github.com/ilflow4592/agent-forensics/actions/workflows/ci.yml)
+[![PyPI version](https://badge.fury.io/py/agent-forensics.svg)](https://pypi.org/project/agent-forensics/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **Black box for AI agents.** Capture every decision, auto-detect failure patterns, generate forensic reports for EU AI Act compliance.
 
 When an AI agent makes a wrong purchase, leaks data, or fails silently — you need to know **why**. Agent Forensics records every decision point, tool call, and LLM interaction, then reconstructs the causal chain and auto-classifies what went wrong.
