@@ -267,6 +267,85 @@ class TestReplayDiff:
         assert len(extra) > 0
 
 
+class TestHandoff:
+    def test_records_handoff_event(self, tmp_db):
+        f = Forensics(session="multi", agent="planner", db_path=tmp_db)
+        eid = f.handoff("executor", context={"task": "buy mouse"}, reasoning="Delegating purchase")
+        assert eid
+        events = f.events()
+        assert len(events) == 1
+        e = events[0]
+        assert e.event_type == "handoff"
+        assert e.agent_id == "planner"
+        assert e.input_data["from_agent"] == "planner"
+        assert e.input_data["to_agent"] == "executor"
+        assert e.input_data["task"] == "buy mouse"
+        assert "handoff:planner→executor" in e.action
+
+    def test_handoff_default_reasoning(self, tmp_db):
+        f = Forensics(session="multi", agent="a", db_path=tmp_db)
+        f.handoff("b")
+        e = f.events()[0]
+        assert "a" in e.reasoning and "b" in e.reasoning
+
+
+class TestAgentStats:
+    def test_single_agent_stats(self, forensics):
+        forensics.decision("act")
+        forensics.tool_call("tool1", output={"ok": True})
+        forensics.error("fail")
+        stats = forensics.agent_stats()
+        assert stats["total_agents"] == 1
+        assert stats["is_multi_agent"] is False
+        assert "test-agent" in stats["agents"]
+        a = stats["agents"]["test-agent"]
+        assert a["decisions"] == 1
+        assert a["errors"] == 1
+        assert a["tools"] == 2  # start + end
+
+    def test_multi_agent_stats(self, tmp_db):
+        f1 = Forensics(session="multi", agent="planner", db_path=tmp_db)
+        f1.decision("plan", reasoning="Planning")
+        f1.handoff("executor", context={"task": "buy"}, reasoning="Delegating")
+
+        f2 = Forensics(session="multi", agent="executor", db_path=tmp_db)
+        f2.decision("purchase item", reasoning="Buying")
+        f2.tool_call("api", output={"status": "ok"})
+        f2.finish("Done")
+
+        stats = f1.agent_stats()
+        assert stats["total_agents"] == 2
+        assert stats["is_multi_agent"] is True
+        assert "planner" in stats["agents"]
+        assert "executor" in stats["agents"]
+        assert stats["agents"]["planner"]["decisions"] == 1
+        assert stats["agents"]["executor"]["decisions"] == 1
+
+    def test_handoff_chain(self, tmp_db):
+        f1 = Forensics(session="chain", agent="a", db_path=tmp_db)
+        f1.handoff("b")
+        f2 = Forensics(session="chain", agent="b", db_path=tmp_db)
+        f2.handoff("c")
+
+        stats = f1.agent_stats()
+        assert stats["handoff_chain"] == ["a", "b", "c"]
+        assert len(stats["handoffs"]) == 2
+
+    def test_per_agent_failures(self, tmp_db):
+        f1 = Forensics(session="fail", agent="agent-a", db_path=tmp_db)
+        f1.decision("search")
+        f1.handoff("agent-b")
+
+        f2 = Forensics(session="fail", agent="agent-b", db_path=tmp_db)
+        f2.decision("purchase item", reasoning="buying without approval")
+        f2.finish("bought it")
+
+        stats = f1.agent_stats()
+        # agent-b should have MISSING_APPROVAL failure
+        b_failures = stats["agents"]["agent-b"]["failures"]
+        assert any(f["type"] == "MISSING_APPROVAL" for f in b_failures)
+
+
 class TestSessionsAndEvents:
     def test_events_returns_current_session(self, forensics):
         forensics.decision("a")
