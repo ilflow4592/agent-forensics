@@ -415,6 +415,84 @@ class Forensics:
             "divergences": divergences,
         }
 
+    # -- Multi-Agent API --
+
+    def handoff(self, to_agent: str, *, context: dict = None, reasoning: str = "") -> str:
+        """Record a handoff from the current agent to another agent.
+
+        Use this when one agent delegates work to another agent in a multi-agent system.
+
+        Args:
+            to_agent: The agent receiving the handoff
+            context: Data passed to the next agent
+            reasoning: Why this handoff is happening
+        """
+        return self.store.save(Event(
+            timestamp=now(),
+            event_type="handoff",
+            agent_id=self.agent,
+            action=f"handoff:{self.agent}→{to_agent}",
+            input_data={"from_agent": self.agent, "to_agent": to_agent, **(context or {})},
+            output_data={},
+            reasoning=reasoning or f"Handing off from {self.agent} to {to_agent}",
+            session_id=self.session,
+        ))
+
+    def agent_stats(self, session_id: str = None) -> dict:
+        """Get per-agent breakdown of events and failures in a session.
+
+        Returns:
+            Dict with per-agent event counts, failure counts, and handoff chain.
+        """
+        from .classifier import classify_failures
+        events = self.store.get_session_events(session_id or self.session)
+
+        agents = {}
+        handoffs = []
+
+        for e in events:
+            aid = e.agent_id
+            if aid not in agents:
+                agents[aid] = {"events": 0, "decisions": 0, "errors": 0, "tools": 0, "failures": []}
+            agents[aid]["events"] += 1
+            if e.event_type == "decision":
+                agents[aid]["decisions"] += 1
+            elif e.event_type == "error":
+                agents[aid]["errors"] += 1
+            elif e.event_type in ("tool_call_start", "tool_call_end"):
+                agents[aid]["tools"] += 1
+            elif e.event_type == "handoff":
+                handoffs.append({
+                    "from": e.input_data.get("from_agent", ""),
+                    "to": e.input_data.get("to_agent", ""),
+                    "reasoning": e.reasoning,
+                    "timestamp": e.timestamp,
+                })
+
+        # Per-agent failure classification
+        all_failures = classify_failures(events)
+        for f in all_failures:
+            step = f["step"] - 1
+            if 0 <= step < len(events):
+                aid = events[step].agent_id
+                if aid in agents:
+                    agents[aid]["failures"].append(f)
+
+        # Build handoff chain
+        chain = []
+        if handoffs:
+            chain.append(handoffs[0]["from"])
+            for h in handoffs:
+                chain.append(h["to"])
+
+        return {
+            "agents": agents,
+            "handoffs": handoffs,
+            "handoff_chain": chain,
+            "total_agents": len(agents),
+            "is_multi_agent": len(agents) > 1,
+        }
+
     # -- Framework Integrations --
 
     def langchain(self):

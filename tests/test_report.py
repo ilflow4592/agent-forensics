@@ -167,3 +167,44 @@ class TestReportEdgeCases:
             forensics.decision(f"step_{i}")
         report = forensics.report()
         assert "step_49" in report
+
+
+class TestMultiAgentReport:
+    def test_multi_agent_section_appears(self, tmp_db):
+        f1 = Forensics(session="multi", agent="planner", db_path=tmp_db)
+        f1.decision("plan")
+        f1.handoff("executor", reasoning="Delegating task")
+
+        f2 = Forensics(session="multi", agent="executor", db_path=tmp_db)
+        f2.decision("execute")
+        f2.finish("done")
+
+        report = f1.report()
+        assert "## Multi-Agent Analysis" in report
+        assert "### Handoff Flow" in report
+        assert "planner" in report
+        assert "executor" in report
+
+    def test_per_agent_breakdown_table(self, tmp_db):
+        f1 = Forensics(session="multi2", agent="agent-a", db_path=tmp_db)
+        f1.decision("search")
+
+        f2 = Forensics(session="multi2", agent="agent-b", db_path=tmp_db)
+        f2.decision("act")
+
+        report = f1.report()
+        assert "### Per-Agent Breakdown" in report
+        assert "agent-a" in report
+        assert "agent-b" in report
+
+    def test_handoff_in_timeline(self, tmp_db):
+        f = Forensics(session="htest", agent="a", db_path=tmp_db)
+        f.handoff("b", reasoning="delegate")
+        report = f.report()
+        assert "HANDOFF" in report
+
+    def test_single_agent_no_multi_section(self, forensics):
+        forensics.decision("act")
+        forensics.finish("done")
+        report = forensics.report()
+        assert "## Multi-Agent Analysis" not in report

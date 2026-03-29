@@ -174,6 +174,18 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
 .diff-missing {{ background: #1a0a0a; color: #d93025; border-left: 2px solid #d93025; }}
 .diff-extra {{ background: #0a1a0a; color: #34a853; border-left: 2px solid #34a853; }}
 
+/* Multi-agent */
+.agent-cards {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 16px; }}
+.agent-card {{ background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 14px; border-top: 3px solid #1a73e8; }}
+.agent-card .agent-name {{ font-weight: 700; font-size: 14px; color: #fff; margin-bottom: 8px; }}
+.agent-card .agent-stat {{ font-size: 12px; color: #888; margin: 2px 0; }}
+.agent-card .agent-stat span {{ color: #ccc; font-weight: 600; }}
+.handoff-flow {{ display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-bottom: 16px; padding: 16px; background: #111; border: 1px solid #333; border-radius: 10px; }}
+.handoff-node {{ background: #1a3a5c; color: #5b9bd5; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; }}
+.handoff-arrow {{ color: #f9ab00; font-size: 20px; margin: 0 8px; }}
+.event.handoff {{ border-left-color: #f9ab00; background: #1a1a0a; }}
+.type-handoff {{ background: #3a3010; color: #f9ab00; }}
+
 #session-content {{ min-height: 300px; }}
 </style>
 </head>
@@ -264,6 +276,45 @@ function renderSession(data) {{
     html += `<div class="stat ${{hasIncident ? 'error' : 'ok'}}"><div class="label">Status</div><div class="value">${{hasIncident ? 'INCIDENT' : 'OK'}}</div></div>`;
     html += '</div>';
 
+    /* Multi-Agent Section */
+    const agentStats = data.agent_stats || {{}};
+    const agents = agentStats.agents || {{}};
+    const handoffList = agentStats.handoffs || [];
+    const agentNames = Object.keys(agents);
+
+    if (agentNames.length > 1 || handoffList.length > 0) {{
+        html += '<div class="section"><h2>Multi-Agent Overview</h2>';
+
+        // Handoff flow
+        if (handoffList.length > 0) {{
+            html += '<div class="handoff-flow">';
+            const chain = agentStats.handoff_chain || [];
+            chain.forEach((a, i) => {{
+                html += `<div class="handoff-node">${{esc(a)}}</div>`;
+                if (i < chain.length - 1) html += '<div class="handoff-arrow">&rarr;</div>';
+            }});
+            html += '</div>';
+        }}
+
+        // Per-agent cards
+        html += '<div class="agent-cards">';
+        const colors = ['#1a73e8', '#34a853', '#a142f4', '#f9ab00', '#d93025', '#00bcd4'];
+        agentNames.forEach((name, idx) => {{
+            const a = agents[name];
+            const failCount = (a.failures || []).length;
+            const color = colors[idx % colors.length];
+            html += `<div class="agent-card" style="border-top-color:${{color}}">`;
+            html += `<div class="agent-name">${{esc(name)}}</div>`;
+            html += `<div class="agent-stat">Events: <span>${{a.events}}</span></div>`;
+            html += `<div class="agent-stat">Decisions: <span>${{a.decisions}}</span></div>`;
+            html += `<div class="agent-stat">Tools: <span>${{a.tools}}</span></div>`;
+            html += `<div class="agent-stat">Errors: <span>${{a.errors}}</span></div>`;
+            if (failCount > 0) html += `<div class="agent-stat" style="color:#d93025">Failures: <span style="color:#d93025">${{failCount}}</span></div>`;
+            html += '</div>';
+        }});
+        html += '</div></div>';
+    }}
+
     /* Failure Classification */
     if (failures.length > 0) {{
         html += '<div class="section"><h2>Failure Classification</h2>';
@@ -343,6 +394,9 @@ function renderSession(data) {{
                 html += `<div class="guard-node guard-ok">[GUARD OK] ${{esc(e.input_data.action || '')}}</div>`;
             }} else if (e.event_type === 'guardrail_block') {{
                 html += `<div class="guard-node guard-block">[GUARD BLOCKED] ${{esc(e.input_data.action || '')}}</div>`;
+            }} else if (e.event_type === 'handoff') {{
+                html += `<div class="drift-node">[HANDOFF] ${{esc(e.input_data.from_agent || '')}} &rarr; ${{esc(e.input_data.to_agent || '')}}</div>`;
+                html += `<div style="padding-left:24px;color:#666">${{esc(truncate(e.reasoning, 150))}}</div>`;
             }} else if (e.event_type === 'final_decision') {{
                 html += `<div class="final-node">[FINAL] ${{esc(truncate(e.output_data.response || JSON.stringify(e.output_data), 150))}}</div>`;
             }}
@@ -448,6 +502,7 @@ function getTypeClass(t) {{
         'prompt_state': 'prompt',
         'guardrail_pass': 'guard-ok',
         'guardrail_block': 'guard-block',
+        'handoff': 'handoff',
     }};
     if (t.startsWith('llm')) return 'llm';
     return map[t] || t;
@@ -460,6 +515,7 @@ function getTypeLabel(t) {{
         'decision': 'DECISION', 'final_decision': 'FINAL', 'error': 'ERROR',
         'context_injection': 'CONTEXT', 'prompt_state': 'PROMPT',
         'prompt_drift': 'DRIFT', 'guardrail_pass': 'GUARD OK', 'guardrail_block': 'BLOCKED',
+        'handoff': 'HANDOFF',
     }};
     return map[t] || t;
 }}
@@ -484,6 +540,9 @@ function extractDetail(e) {{
         const a = e.input_data.allowed ? 'ALLOWED' : 'BLOCKED';
         return `${{a}}: ${{e.input_data.intent || ''}} → ${{e.input_data.action || ''}}`;
     }}
+    if (e.event_type === 'handoff') {{
+        return `${{e.input_data.from_agent || ''}} → ${{e.input_data.to_agent || ''}}: ${{truncate(e.reasoning, 100)}}`;
+    }}
     return truncate(e.reasoning, 150);
 }}
 
@@ -501,6 +560,52 @@ function esc(text) {{
 </script>
 </body>
 </html>"""
+
+
+def _compute_agent_stats(events, failures):
+    """Compute per-agent breakdown for multi-agent visualization."""
+    agents = {}
+    handoffs = []
+
+    for e in events:
+        aid = e.agent_id
+        if aid not in agents:
+            agents[aid] = {"events": 0, "decisions": 0, "errors": 0, "tools": 0, "failures": []}
+        agents[aid]["events"] += 1
+        if e.event_type == "decision":
+            agents[aid]["decisions"] += 1
+        elif e.event_type == "error":
+            agents[aid]["errors"] += 1
+        elif e.event_type in ("tool_call_start", "tool_call_end"):
+            agents[aid]["tools"] += 1
+        elif e.event_type == "handoff":
+            handoffs.append({
+                "from": e.input_data.get("from_agent", ""),
+                "to": e.input_data.get("to_agent", ""),
+                "reasoning": e.reasoning,
+            })
+
+    # Map failures to agents
+    for f in failures:
+        step = f["step"] - 1
+        if 0 <= step < len(events):
+            aid = events[step].agent_id
+            if aid in agents:
+                agents[aid]["failures"].append({"type": f["type"], "severity": f["severity"]})
+
+    chain = []
+    if handoffs:
+        chain.append(handoffs[0]["from"])
+        for h in handoffs:
+            chain.append(h["to"])
+
+    return {
+        "agents": agents,
+        "handoffs": handoffs,
+        "handoff_chain": chain,
+        "total_agents": len(agents),
+        "is_multi_agent": len(agents) > 1,
+    }
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -530,7 +635,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 for e in events
             ]
 
-            self._json({"events": event_dicts, "failures": failures})
+            # Compute agent stats for multi-agent sessions
+            agent_stats = _compute_agent_stats(events, failures)
+
+            self._json({"events": event_dicts, "failures": failures, "agent_stats": agent_stats})
 
         elif parsed.path == "/api/diff":
             params = parse_qs(parsed.query)

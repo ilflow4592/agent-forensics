@@ -79,6 +79,7 @@ def generate_report(store: EventStore, session_id: str) -> str:
             "prompt_drift": "DRIFT",
             "guardrail_pass": "GUARD-OK",
             "guardrail_block": "GUARD-BLOCK",
+            "handoff": "HANDOFF",
         }.get(event.event_type, event.event_type)
 
         # Extract key information
@@ -205,6 +206,44 @@ def generate_report(store: EventStore, session_id: str) -> str:
             )
         report.append("")
 
+    # -- Multi-Agent Analysis --
+    agent_ids = list(set(e.agent_id for e in events))
+    handoffs = [e for e in events if e.event_type == "handoff"]
+    if len(agent_ids) > 1 or handoffs:
+        report.append("## Multi-Agent Analysis")
+        report.append("")
+
+        # Handoff flow
+        if handoffs:
+            report.append("### Handoff Flow")
+            report.append("")
+            chain_parts = []
+            chain_parts.append(handoffs[0].input_data.get("from_agent", "?"))
+            for h in handoffs:
+                chain_parts.append(h.input_data.get("to_agent", "?"))
+            report.append(f"**Chain:** `{'` → `'.join(chain_parts)}`")
+            report.append("")
+            report.append("| # | From | To | Reasoning | Timestamp |")
+            report.append("|---|------|----|-----------|-----------|")
+            for i, h in enumerate(handoffs, 1):
+                fr = h.input_data.get("from_agent", "")
+                to = h.input_data.get("to_agent", "")
+                report.append(f"| {i} | {fr} | {to} | {_truncate(h.reasoning, 80)} | {h.timestamp} |")
+            report.append("")
+
+        # Per-agent breakdown
+        report.append("### Per-Agent Breakdown")
+        report.append("")
+        report.append("| Agent | Events | Decisions | Errors | Tools |")
+        report.append("|-------|--------|-----------|--------|-------|")
+        for aid in agent_ids:
+            agent_events = [e for e in events if e.agent_id == aid]
+            a_decisions = sum(1 for e in agent_events if e.event_type == "decision")
+            a_errors = sum(1 for e in agent_events if e.event_type == "error")
+            a_tools = sum(1 for e in agent_events if e.event_type in ("tool_call_start", "tool_call_end"))
+            report.append(f"| `{aid}` | {len(agent_events)} | {a_decisions} | {a_errors} | {a_tools} |")
+        report.append("")
+
     # -- Tool Usage Summary --
     report.append("## Tool Usage Summary")
     report.append("")
@@ -270,6 +309,10 @@ def _extract_detail(event: Event) -> str:
         allowed = event.input_data.get("allowed", False)
         status = "ALLOWED" if allowed else "BLOCKED"
         return _truncate(f"{status}: intent='{intent}' action='{action}' — {event.reasoning}", 120)
+    if event.event_type == "handoff":
+        fr = event.input_data.get("from_agent", "")
+        to = event.input_data.get("to_agent", "")
+        return _truncate(f"{fr} → {to}: {event.reasoning}", 120)
     return _truncate(event.reasoning, 100)
 
 
@@ -321,6 +364,11 @@ def _build_causal_chain(events: list[Event]) -> str:
         elif event.event_type == "guardrail_pass":
             action = event.input_data.get("action", "")
             chain_parts.append(f"[GUARDRAIL OK] {action}")
+        elif event.event_type == "handoff":
+            fr = event.input_data.get("from_agent", "")
+            to = event.input_data.get("to_agent", "")
+            chain_parts.append(f"[HANDOFF] {fr} → {to}")
+            chain_parts.append(f"  {_truncate(event.reasoning, 150)}")
         elif event.event_type == "final_decision":
             chain_parts.append(f"[FINAL] {_truncate(str(event.output_data), 200)}")
 
